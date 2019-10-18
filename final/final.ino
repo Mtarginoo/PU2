@@ -15,11 +15,40 @@
 #define velocidadeME PORTB5 //Arduino - 11
 #define velocidadeMD PORTB6 //Arduino - 12
 
+void HCSR04Trig();
+volatile int cont = 0;
+int aux = 0;
+int counter = 0x00;
 
   
 //definição de macros auxiliares
 #define set_bit(reg,bit) (reg |= (1<<bit))
 #define reset_bit(reg, bit) (reg &= ~(1<<bit))
+
+ISR(TIMER0_OVF_vect){
+  cont++;
+  if(cont == 980){
+    if(aux == 1){
+      aux = 0;
+    }
+    cont = 0;
+  }
+
+  // -- Configura Interrupção do Timer0 --
+  //
+  // T0_OVF = (256 - timer0) x prescaler x ciclo de máquina
+  //        = (256 -    0  ) x    256    x      62,5E-9
+  //        =~ 4 ms
+  //
+  // Para 60 ms: 4ms x 15
+  
+  counter++; 
+  if(counter == 15){             
+    HCSR04Trig();               //pulso de trigger
+    counter = 0; 
+  }
+  
+} //end ISR Timer0
 
 int main(){
   Serial.begin(9600);
@@ -38,25 +67,23 @@ int main(){
   int8_t comando = '0';
 
   while(1){
-    uint32_t sensor1, sensor2;
-
-    sensor1 
-
-
-
-    
+    uint16_t sensor1;
+  
+    sensor1 = pegaPulsoEcho(); 
+    Serial.println(sensor1);
   }
+
 
   
 } //fim main
 
-uint16_t pegaPulsoEcho(Byte_8 variavel){                //Função para captura do pulso de echo gerado pelo sensor de ultrassom
+uint16_t pegaPulsoEcho(){                //Função para captura do pulso de echo gerado pelo sensor de ultrassom
 
   uint32_t i, resultado;                //Variáveis locais auxiliares
   
   for(i=0;i<600000;i++)               //Laço for para aguardar o início da borda de subida do pulso de echo
   {
-    if(!(variavel & (1<<echo)))             //Pulso continue em nível baixo?
+    if(!(PORTC & (1<<echo1)))             //Pulso continue em nível baixo?
     continue;                   //Aguarda
     else                                            //Pulso em nível alto?
     break;                      //Interrompe
@@ -72,7 +99,7 @@ uint16_t pegaPulsoEcho(Byte_8 variavel){                //Função para captura 
   
   for(i=0;i<600000;i++)               //Laço for para aguardar que ocorra a borda de descida do pulso de echo
   {
-    if(PIND & (1<<echo))              //Pulso continua em nível alto?
+    if(PINC & (1<<echo1))              //Pulso continua em nível alto?
     {
       if(TCNT1 > 60000) break;          //Interrompe se TCNT2 atingir o limite da contagem
       else continue;                //Senão, continua
@@ -91,4 +118,13 @@ uint16_t pegaPulsoEcho(Byte_8 variavel){                //Função para captura 
   
   
 } 
+
+void HCSR04Trig()                //gera pulso de Trigger
+{
+  
+  set_bit(PORTC,trigger1);
+  _delay_us(10);
+  reset_bit(PORTC,trigger1);
+  
+} //end HCSR04Trig
 
