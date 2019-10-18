@@ -1,11 +1,11 @@
+#include <Ultrasonic.h>
+#include <ArduinoJson.h>
 #include <avr/io.h>
 #include <inttypes.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
-#include <Ultrasonic.h>
-#include <ArduinoJson.h>
 
-#define F_CPU 16000000
+//#define F_CPU 16000000
 #define pino_echo1 PORTC7 //Arduino - 30
 #define pino_trigger1 PORTC3 //Arduino - 34
 #define pino_echo2 PORTA0 //Arduino - 22
@@ -16,11 +16,14 @@
 #define motorDT PORTL5 //Arduino - 44
 #define velocidadeME PORTB5 //Arduino - 11
 #define velocidadeMD PORTB6 //Arduino - 12
+#define botao PORTB3 // Arduino - 50
 #define potenciometro A0
 
 
 #define set_bit(reg,bit) (reg |= (1<<bit))
 #define reset_bit(reg, bit) (reg &= ~(1<<bit))
+#define myDigitalWrite(reg, bit, level) (level == 1 ? set_bit(reg,bit) : reset_bit(reg,bit))
+#define myDigitalRead(pino, bit) (pino & (1<<bit) ? return 1 : return 0)
 
 int main(){
   Serial.begin(115200);
@@ -65,10 +68,10 @@ int main(){
 
     if (comando == '1')
     { //andando para frente
-        digitalWrite(motorEF, HIGH);
-        digitalWrite(motorDF, HIGH);
-        digitalWrite(motorET, LOW);
-        digitalWrite(motorDT, LOW);
+        myDigitalWrite(DDRD, motorEF, HIGH);
+        myDigitalWrite(DDRL, motorDF, HIGH);
+        myDigitalWrite(DDRG, motorET, LOW);
+        myDigitalWrite(DDRL, motorDT, LOW);
         analogWrite(velocidadeMD, pwm);
         analogWrite(velocidadeME, pwm);
         if (sensor1 < 15)
@@ -80,19 +83,19 @@ int main(){
                 { //curva para esquerda
                     analogWrite(velocidadeME, pwm * 0.1);
                     analogWrite(velocidadeMD, pwm);
-                    digitalWrite(motorEF, HIGH);
-                    digitalWrite(motorDF, HIGH);
-                    digitalWrite(motorET, LOW);
-                    digitalWrite(motorDT, LOW);
+                    myDigitalWrite(DDRD, motorEF, HIGH);
+                    myDigitalWrite(DDRL, motorDF, HIGH);
+                    myDigitalWrite(DDRG, motorET, LOW);
+                    myDigitalWrite(DDRL, motorDT, LOW);
                 }
                 else if (aleatorio == 2)
                 { //curva para direita
                     analogWrite(velocidadeMD, pwm * 0.1);
                     analogWrite(velocidadeME, pwm);
-                    digitalWrite(motorEF, HIGH);
-                    digitalWrite(motorDF, HIGH);
-                    digitalWrite(motorET, LOW);
-                    digitalWrite(motorDT, LOW);
+                    myDigitalWrite(DDRD, motorEF, HIGH);
+                    myDigitalWrite(DDRL, motorDF, HIGH);
+                    myDigitalWrite(DDRG, motorET, LOW);
+                    myDigitalWrite(DDRL, motorDT, LOW);
                 }
                 microsec1 = ultrasonic1.timing();
                 sensor1 = ultrasonic1.convert(microsec1, Ultrasonic::CM);
@@ -101,10 +104,10 @@ int main(){
     }
     else if (comando == '2')
     {
-        digitalWrite(motorET, HIGH);
-        digitalWrite(motorDT, HIGH);
-        digitalWrite(motorEF, LOW);
-        digitalWrite(motorDF, LOW);
+        myDigitalWrite(DDRG, motorET, HIGH);
+        myDigitalWrite(DDRL, motorDT, HIGH);
+        myDigitalWrite(DDRD, motorEF, LOW);
+        myDigitalWrite(DDRL, motorDF, LOW);
         analogWrite(velocidadeMD, pwm);
         analogWrite(velocidadeME, pwm);
         if (sensor2 < 15)
@@ -116,19 +119,19 @@ int main(){
                 { //curva para esquerda
                     analogWrite(velocidadeMD, pwm * 0.1);
                     analogWrite(velocidadeME, pwm);
-                    digitalWrite(motorET, HIGH);
-                    digitalWrite(motorDT, HIGH);
-                    digitalWrite(motorEF, LOW);
-                    digitalWrite(motorDF, LOW);
+                    myDigitalWrite(DDRG, motorET, HIGH);
+                    myDigitalWrite(DDRL, motorDT, HIGH);
+                    myDigitalWrite(DDRD, motorEF, LOW);
+                    myDigitalWrite(DDRL, motorDF, LOW);
                 }
                 else if (aleatorio == 2)
                 { //curva para direita
                     analogWrite(velocidadeME, pwm * 0.1);
                     analogWrite(velocidadeMD, pwm);
-                    digitalWrite(motorET, HIGH);
-                    digitalWrite(motorDT, HIGH);
-                    digitalWrite(motorEF, LOW);
-                    digitalWrite(motorDF, LOW);
+                    myDigitalWrite(DDRG, motorET, HIGH);
+                    myDigitalWrite(DDRL, motorDT, HIGH);
+                    myDigitalWrite(DDRD, motorEF, LOW);
+                    myDigitalWrite(DDRL, motorDF, LOW);
                 }
                 microsec2 = ultrasonic2.timing();
                 sensor2 = ultrasonic2.convert(microsec2, Ultrasonic::CM);
@@ -259,4 +262,3 @@ void loop()
     }
 }
 */
-
