@@ -5,7 +5,7 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define F_CPU 16000000
+#define F_CPU 20000000
 #define pino_echo1 30 //PORTC7 //Arduino - 30
 #define pino_trigger1 34 //PORTC3 //Arduino - 34
 #define pino_echo2 22 //PORTA0 //Arduino - 22
@@ -54,7 +54,7 @@ uint16_t myAnalogRead(uint8_t ch)
   return (ADC);
 }
 
-double qlqrcoisaai = 0;
+//uint16_t pwm = 0;
 
 int main() {
   Serial.begin(115200);
@@ -71,10 +71,10 @@ int main() {
   
   adc_init();
 
-  TCCR0A = (1<<COM0A1) | (1<<WGM00) | (1<<WGM01);
+  /*TCCR0A = (1<<COM0A1) | (1<<WGM00) | (1<<WGM01);
   TIMSK0 = (1<<TOIE0);
   OCR0A = (qlqrcoisaai/100.0) * 255;
-  TCCR0B = (1<<CS00);
+  TCCR0B = (1<<CS00);*/
   
   Ultrasonic ultrasonic1(pino_trigger1, pino_echo1);
   Ultrasonic ultrasonic2(pino_trigger2, pino_echo2);
@@ -84,6 +84,7 @@ int main() {
   int8_t comando = '2';
 
   while (1) {
+    
     uint32_t sensor1, sensor2, microsec1, microsec2;
 
     microsec1 = ultrasonic1.timing();
@@ -149,6 +150,7 @@ int main() {
       myDigitalWrite(PORTL, motorDT, 1);
       myDigitalWrite(PORTD, motorEF, 0);
       myDigitalWrite(PORTL, motorDF, 0);
+      
       analogWrite(velocidadeMD, pwm);
       analogWrite(velocidadeME, pwm);
       if (sensor2 < 15)
@@ -182,11 +184,11 @@ int main() {
   }
 }
 
-ISR(TIMER0_OVF_vect)
+/*ISR(TIMER0_OVF_vect)
 {
-  OCR0A = (qlqrcoisaai/100.0) * 255;
+  OCR0A = (pwm/100.0) * 255;
   
-}
+}*/
 
 /*
   int val;
