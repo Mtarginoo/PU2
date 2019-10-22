@@ -54,6 +54,9 @@ uint16_t myAnalogRead(uint8_t ch)
   return (ADC);
 }
 
+bool ReT = false;
+
+
 int main() {
   Serial.begin(115200);
 
@@ -71,28 +74,39 @@ int main() {
 
   adc_init();
 
+  //SET TIME TRANSMISSAO/RECEPCAO
+  TCCR1A = 0;
+  TCNT1 = 0;
+  OCR1A = 4992;// Compara com 4992 = 100 ms
+  TCCR1B = _BV(WGM12) | _BV(CS10) | _BV(CS12); // modo CTC, prescaler 1024
+  TIMSK1 = _BV(OCIE1A);
+
+  //SET PWM
   OCR2A = 0;
   OCR2B = 0;
   TCCR2A = _BV(COM2A1) | _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
   TCCR2B = _BV(CS21);
+
   Ultrasonic ultrasonic1(pino_trigger1, pino_echo1);
   Ultrasonic ultrasonic2(pino_trigger2, pino_echo2);
 
 
   uint16_t val, pwm, aleatorio, estado = 0, lastTimeComando = 0;
-  int8_t comando = '1';
-  bool power = false;
+  int8_t comando = '0';
+  bool power = true;
 
   while (1) {
-    //Serial.println(myDigitalRead(PINB, botao));
-    //Serial.println(power);
-    if (myDigitalRead(PINB, botao) == 0) {
-      //Serial.println("Aqui");
-      power = !power;
-    }
-    else {
-      if (power)
+
+    if (myDigitalRead(PINB, botao)) {
+      if (ReT)
       {
+          Serial.println("Recebendo dados:");
+          comando = (Serial.available() ? Serial.read(): comando);   
+      }
+      else {
+        
+        Serial.println("Enviando dados:");
+        Serial.println(comando);
         uint32_t sensor1, sensor2, microsec1, microsec2;
 
         microsec1 = ultrasonic1.timing();
@@ -104,7 +118,6 @@ int main() {
         Serial.println(val);
         pwm = map(val, 0, 1023, 0, 255);
         Serial.println(pwm);
-        comando = Serial.available() > 0 ? Serial.read() : comando;
 
         DynamicJsonBuffer jBuffer;
         JsonObject &root = jBuffer.createObject();
@@ -193,134 +206,16 @@ int main() {
           }
         }
       }
+
+    }
+    else {
+      OCR2A = 0;
+      OCR2B = 0;
     }
   }
 }
 
-/*ISR(TIMER1_OVF_vect)
-  {
-  myDigitalWrite(PORTB,velocidadeMD, 0);
-  myDigitalWrite(PORTB,velocidadeME, 0);
-  OCR2A = (pwm/100.0) * 255;
-  }*/
-
-/*
-  int val;
-  int pwm;
-  int estado = 0;
-  int aleatorio;
-  int lastTimeComando = 0;
-  char comando = '0';
-  Ultrasonic ultrasonic1(pino_trigger1, pino_echo1);
-  Ultrasonic ultrasonic2(pino_trigger2, pino_echo2);
-
-  void setup()
-  {
-    Serial.begin(115200);
-    pinMode(motorEF, OUTPUT);
-    pinMode(motorET, OUTPUT);
-    pinMode(motorDF, OUTPUT);
-    pinMode(motorDT, OUTPUT);
-    pinMode(velocidadeMD, OUTPUT);
-    pinMode(velocidadeME, OUTPUT);
-    pinMode(potenciometro, INPUT);
-  }
-
-  void loop()
-  {
-    float sensor1, sensor2;
-    long microsec1;
-    long microsec2;
-
-    microsec1 = ultrasonic1.timing();
-    microsec2 = ultrasonic2.timing();
-    sensor1 = ultrasonic1.convert(microsec1, Ultrasonic::CM);
-    sensor2 = ultrasonic2.convert(microsec2, Ultrasonic::CM);
-
-    val = analogRead(potenciometro);
-    pwm = map(val, 0, 1023, 0, 255);
-    comando = Serial.available() > 0 ? Serial.read() : comando;
-
-    DynamicJsonBuffer jBuffer;
-    JsonObject &root = jBuffer.createObject();
-
-    root["Sensor1"] = sensor1;
-    root["Sensor2"] = sensor2;
-
-    root.printTo(Serial);
-    Serial.println();
-
-    if (comando == '1')
-    { //andando para frente
-        digitalWrite(motorEF, HIGH);
-        digitalWrite(motorDF, HIGH);
-        digitalWrite(motorET, LOW);
-        digitalWrite(motorDT, LOW);
-        analogWrite(velocidadeMD, pwm);
-        analogWrite(velocidadeME, pwm);
-        if (sensor1 < 15)
-        {
-            aleatorio = random(0, 3);
-            while (sensor1 < 15)
-            {
-                if (aleatorio == 1)
-                { //curva para esquerda
-                    analogWrite(velocidadeME, pwm * 0.1);
-                    analogWrite(velocidadeMD, pwm);
-                    digitalWrite(motorEF, HIGH);
-                    digitalWrite(motorDF, HIGH);
-                    digitalWrite(motorET, LOW);
-                    digitalWrite(motorDT, LOW);
-                }
-                else if (aleatorio == 2)
-                { //curva para direita
-                    analogWrite(velocidadeMD, pwm * 0.1);
-                    analogWrite(velocidadeME, pwm);
-                    digitalWrite(motorEF, HIGH);
-                    digitalWrite(motorDF, HIGH);
-                    digitalWrite(motorET, LOW);
-                    digitalWrite(motorDT, LOW);
-                }
-                microsec1 = ultrasonic1.timing();
-                sensor1 = ultrasonic1.convert(microsec1, Ultrasonic::CM);
-            }
-        }
-    }
-    else if (comando == '2')
-    {
-        digitalWrite(motorET, HIGH);
-        digitalWrite(motorDT, HIGH);
-        digitalWrite(motorEF, LOW);
-        digitalWrite(motorDF, LOW);
-        analogWrite(velocidadeMD, pwm);
-        analogWrite(velocidadeME, pwm);
-        if (sensor2 < 15)
-        {
-            aleatorio = random(0, 3);
-            while (sensor2 < 15)
-            {
-                if (aleatorio == 1)
-                { //curva para esquerda
-                    analogWrite(velocidadeMD, pwm * 0.1);
-                    analogWrite(velocidadeME, pwm);
-                    digitalWrite(motorET, HIGH);
-                    digitalWrite(motorDT, HIGH);
-                    digitalWrite(motorEF, LOW);
-                    digitalWrite(motorDF, LOW);
-                }
-                else if (aleatorio == 2)
-                { //curva para direita
-                    analogWrite(velocidadeME, pwm * 0.1);
-                    analogWrite(velocidadeMD, pwm);
-                    digitalWrite(motorET, HIGH);
-                    digitalWrite(motorDT, HIGH);
-                    digitalWrite(motorEF, LOW);
-                    digitalWrite(motorDF, LOW);
-                }
-                microsec2 = ultrasonic2.timing();
-                sensor2 = ultrasonic2.convert(microsec2, Ultrasonic::CM);
-            }
-        }
-    }
-  }
-*/
+ISR(TIMER1_COMPA_vect)
+{
+  ReT = !ReT;
+}
