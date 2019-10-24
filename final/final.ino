@@ -25,6 +25,32 @@
 #define myDigitalWrite(reg, bit, level) ((level == 1) ? set_bit(reg,bit) : reset_bit(reg,bit))
 #define myDigitalRead(pino, bit) (pino & (1<<bit) ? 1 : 0)
 
+
+void mySerialBegin(int baudRate) {
+   UCSR0B |= (1 << RXEN0) | (1 << TXEN0);   // Turn on the transmission and reception circuitry 
+   UCSR0C |= (1 << UCSZ00) | (1 << UCSZ01); // Use 8-bit character sizes 
+
+   UBRR0H = (baudRate >> 8); // Load upper 8-bits of the baud rate value into the high byte of the UBRR register 
+   UBRR0L = (((F_CPU / (baudRate * 16UL))) - 1); // Load lower 8-bits of the baud rate value into the low byte of the UBRR register 
+}
+
+char mySerialRead() {
+   char ReceivedByte;
+   while ((UCSR0A & (1 << RXC0)) == 0) {}; // Do nothing until data have been received and is ready to be read from UDR 
+   ReceivedByte = UDR0; // Fetch the received byte value into the variable "ByteReceived" 
+   return ReceivedByte;
+}
+
+void mySerialPrint(char data) {
+   while ((UCSR0A & (1 << UDRE0)) == 0) {}; // Do nothing until UDR is ready for more data to be written to it 
+   UDR0 = data; // Echo back the byte back to the computer   
+}
+
+void mySerialPrintln(char data) {
+  mySerialPrint(data);
+  mySerialPrint('\n');
+}
+
 void adc_init()
 {
   // AREF = AVcc
@@ -58,7 +84,7 @@ bool ReT = false;
 
 
 int main() {
-  Serial.begin(115200);
+  mySerialBegin(115200);
 
   sei();
 
@@ -100,13 +126,13 @@ int main() {
     if (myDigitalRead(PINB, botao)) {
       if (ReT)
       {
-          Serial.println("Recebendo dados:");
-          comando = (Serial.available() ? Serial.read(): comando);   
+          mySerialPrintln("Recebendo dados:");
+          comando = mySerialRead();   
       }
       else {
         
-        Serial.println("Enviando dados:");
-        Serial.println(comando);
+        mySerialPrintln("Enviando dados:");
+        mySerialPrintln(comando);
         uint32_t sensor1, sensor2, microsec1, microsec2;
 
         microsec1 = ultrasonic1.timing();
@@ -115,9 +141,9 @@ int main() {
         sensor2 = ultrasonic2.convert(microsec2, Ultrasonic::CM);
 
         val = myAnalogRead(0);
-        Serial.println(val);
+        mySerialPrintln(val);
         pwm = map(val, 0, 1023, 0, 255);
-        Serial.println(pwm);
+        mySerialPrintln(pwm);
 
         DynamicJsonBuffer jBuffer;
         JsonObject &root = jBuffer.createObject();
