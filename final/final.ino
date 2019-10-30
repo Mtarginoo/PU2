@@ -5,7 +5,6 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define F_CPU 20000000
 #define pino_echo1 30 //PORTC7 //Arduino - 30
 #define pino_trigger1 34 //PORTC3 //Arduino - 34
 #define pino_echo2 22 //PORTA0 //Arduino - 22
@@ -16,7 +15,7 @@
 #define motorDT PORTL5 //Arduino - 44
 #define velocidadeME PORTB4 //Arduino - 10
 #define velocidadeMD PORTH6 //Arduino - 9
-#define botao PORTB3 // Arduino - 50
+#define chave PORTB3 // Arduino - 50
 #define potenciometro PORTF0 // Arduino - A0
 
 
@@ -24,7 +23,6 @@
 #define reset_bit(reg, bit) (reg &= ~(1<<bit))
 #define myDigitalWrite(reg, bit, level) ((level == 1) ? set_bit(reg,bit) : reset_bit(reg,bit))
 #define myDigitalRead(pino, bit) (pino & (1<<bit) ? 1 : 0)
-
 
 void mySerialBegin(int baudRate) {
    UCSR0B |= (1 << RXEN0) | (1 << TXEN0);   // Turn on the transmission and reception circuitry 
@@ -34,21 +32,17 @@ void mySerialBegin(int baudRate) {
    UBRR0L = (((F_CPU / (baudRate * 16UL))) - 1); // Load lower 8-bits of the baud rate value into the low byte of the UBRR register 
 }
 
-char mySerialRead() {
-   char ReceivedByte;
-   while ((UCSR0A & (1 << RXC0)) == 0) {}; // Do nothing until data have been received and is ready to be read from UDR 
-   ReceivedByte = UDR0; // Fetch the received byte value into the variable "ByteReceived" 
-   return ReceivedByte;
+void mySerialPrint(char* data) {
+   int tam = strlen(data);
+   for(int i=0; i<tam; i++)
+   {
+     UDR0 = data[i];
+   }
 }
 
-void mySerialPrint(char data) {
-   while ((UCSR0A & (1 << UDRE0)) == 0) {}; // Do nothing until UDR is ready for more data to be written to it 
-   UDR0 = data; // Echo back the byte back to the computer   
-}
-
-void mySerialPrintln(char data) {
+void mySerialPrintln(char* data) {
   mySerialPrint(data);
-  mySerialPrint('\n');
+  UDR0 = '\n';
 }
 
 void adc_init()
@@ -84,7 +78,7 @@ bool ReT = false;
 
 
 int main() {
-  mySerialBegin(115200);
+  mySerialBegin(9600);
 
   sei();
 
@@ -95,8 +89,8 @@ int main() {
   set_bit(DDRB, velocidadeME);
   set_bit(DDRH, velocidadeMD);
   reset_bit(DDRF, potenciometro);
-  reset_bit(DDRB, botao);
-  set_bit(PORTB, botao);
+  reset_bit(DDRB, chave);
+  set_bit(PORTB, chave);
 
   adc_init();
 
@@ -118,21 +112,26 @@ int main() {
 
 
   uint16_t val, pwm, aleatorio, estado = 0, lastTimeComando = 0;
-  int8_t comando = '0';
-  bool power = true;
+  char comando = '0', escrita = '0';
 
   while (1) {
 
-    if (myDigitalRead(PINB, botao)) {
+    if (myDigitalRead(PINB, chave)) {
       if (ReT)
       {
           mySerialPrintln("Recebendo dados:");
-          comando = mySerialRead();   
+          escrita = UDR0;
+          if((escrita == '1') || (escrita == '2'))
+          {
+            comando = escrita;
+            mySerialPrintln("Foi feita uma leitura serial.");
+          }
+          mySerialPrint("Comando: ");
+          mySerialPrintln(comando);   
       }
       else {
         
         mySerialPrintln("Enviando dados:");
-        mySerialPrintln(comando);
         uint32_t sensor1, sensor2, microsec1, microsec2;
 
         microsec1 = ultrasonic1.timing();
@@ -142,7 +141,7 @@ int main() {
 
         val = myAnalogRead(0);
         mySerialPrintln(val);
-        pwm = map(val, 0, 1023, 0, 255);
+        pwm = val/4;
         mySerialPrintln(pwm);
 
         DynamicJsonBuffer jBuffer;
