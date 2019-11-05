@@ -1,5 +1,4 @@
 #include <Ultrasonic.h>
-#include <ArduinoJson.h>
 #include <avr/io.h>
 #include <inttypes.h>
 #include <avr/interrupt.h>
@@ -25,24 +24,25 @@
 #define myDigitalRead(pino, bit) (pino & (1<<bit) ? 1 : 0)
 
 void mySerialBegin(int baudRate) {
-   UCSR0B |= (1 << RXEN0) | (1 << TXEN0);   // Turn on the transmission and reception circuitry 
-   UCSR0C |= (1 << UCSZ00) | (1 << UCSZ01); // Use 8-bit character sizes 
 
-   UBRR0H = (baudRate >> 8); // Load upper 8-bits of the baud rate value into the high byte of the UBRR register 
-   UBRR0L = (((F_CPU / (baudRate * 16UL))) - 1); // Load lower 8-bits of the baud rate value into the low byte of the UBRR register 
+  UBRR0H = ((((F_CPU / 16 / baudRate)) - 1) >> 8);
+  UBRR0L = (((F_CPU / 16 / baudRate)) - 1);
+
+
+  UCSR0B = (1 << TXEN0) | (1 << TXCIE0) | (1 << RXEN0) | (1 << RXCIE0); // habilita R e T
+
+  UCSR0C = (1 << UCSZ00) | (1 << UCSZ01); // dados de 8 bits
 }
 
-void mySerialPrint(char* data) {
-   int tam = strlen(data);
-   for(int i=0; i<tam; i++)
-   {
-     UDR0 = data[i];
-   }
-}
-
-void mySerialPrintln(char* data) {
-  mySerialPrint(data);
-  UDR0 = '\n';
+void mySerialPrint(char* data)
+{
+  while (!(UCSR0A & (1 << UDRE0)));
+  for (int i = 0; i < strlen(data); i++)
+  {
+    while (!(UCSR0A & (1 << UDRE0)));
+    UDR0 = data[i];
+  }
+  while (!(UCSR0A & (1 << UDRE0)));
 }
 
 void adc_init()
@@ -112,26 +112,26 @@ int main() {
 
 
   uint16_t val, pwm, aleatorio, estado = 0, lastTimeComando = 0;
-  char comando = '0', escrita = '0';
-
+  char comando = '0', escrita = '0', result[100];
   while (1) {
 
     if (myDigitalRead(PINB, chave)) {
       if (ReT)
       {
-          mySerialPrintln("Recebendo dados:");
+          mySerialPrint("Recebendo dados: \n");
           escrita = UDR0;
           if((escrita == '1') || (escrita == '2'))
           {
             comando = escrita;
-            mySerialPrintln("Foi feita uma leitura serial.");
+            mySerialPrint("Foi feita uma leitura serial. \n");
           }
-          mySerialPrint("Comando: ");
-          mySerialPrintln(comando);   
+
+          sprintf(result, "Comando: %d \n", comando);
+          mySerialPrint(result);
       }
       else {
         
-        mySerialPrintln("Enviando dados:");
+        mySerialPrint("Enviando dados: \n");
         uint32_t sensor1, sensor2, microsec1, microsec2;
 
         microsec1 = ultrasonic1.timing();
@@ -140,18 +140,11 @@ int main() {
         sensor2 = ultrasonic2.convert(microsec2, Ultrasonic::CM);
 
         val = myAnalogRead(0);
-        mySerialPrintln(val);
         pwm = val/4;
-        mySerialPrintln(pwm);
 
-        DynamicJsonBuffer jBuffer;
-        JsonObject &root = jBuffer.createObject();
-
-        root["Sensor1"] = sensor1;
-        root["Sensor2"] = sensor2;
-
-        root.printTo(Serial);
-        Serial.println();
+        sprintf(result,"[Sensor1]: %d1 || [Sensor2]: %d2 \n", sensor1, sensor2);
+        mySerialPrint(result);
+        
 
         if (comando == '1')
         { //andando para frente
